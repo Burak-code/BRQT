@@ -1,0 +1,2455 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BRQT - Brain Response Quality Technology</title>
+    <style>
+        /* ===== Genel Sıfırlama ve Değişkenler ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --glow-color: #258CFF;
+            --bg-color: #0d1322;
+            --panel-color: #131d31;
+            --text-color: #edf5ff;
+            --muted-color: #9bb0cf;
+            --border-radius: 28px;
+            --shadow-size: 16px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            transition: background 0.3s;
+        }
+
+        /* ===== Ana Pencere ===== */
+        .window {
+            width: 780px;
+            max-width: 100%;
+            height: 650px;
+            max-height: 95vh;
+            background: var(--bg-color);
+            border-radius: var(--border-radius);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 0 0 60px var(--glow-color), 0 0 100px rgba(37, 140, 255, 0.2);
+            transition: box-shadow 0.4s ease;
+            overflow: hidden;
+            backdrop-filter: blur(2px);
+        }
+
+        /* Dış glow katmanı (pseudo) */
+        .window::before {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: calc(var(--border-radius) + 6px);
+            padding: 6px;
+            background: var(--glow-color);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            opacity: 0.8;
+            transition: background 0.4s;
+        }
+
+        /* İkinci iç glow */
+        .window::after {
+            content: '';
+            position: absolute;
+            inset: 8px;
+            border-radius: calc(var(--border-radius) - 4px);
+            background: var(--panel-color);
+            opacity: 0.3;
+            pointer-events: none;
+            filter: blur(8px);
+        }
+
+        /* ===== Başlık Çubuğu ===== */
+        .title-bar {
+            background: var(--bg-color);
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 2;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .title-bar .left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .title-bar .settings-btn {
+            background: transparent;
+            border: none;
+            color: var(--muted-color);
+            font-size: 14px;
+            cursor: pointer;
+            padding: 4px 10px;
+            border-radius: 6px;
+            transition: 0.2s;
+            font-weight: 500;
+        }
+        .title-bar .settings-btn:hover {
+            color: var(--text-color);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .title-bar .brand {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: var(--text-color);
+            user-select: none;
+            margin-left: 4px;
+        }
+
+        .title-bar .window-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .title-bar .window-controls button {
+            background: transparent;
+            border: none;
+            color: var(--muted-color);
+            font-size: 18px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 300;
+            line-height: 1;
+        }
+        .title-bar .window-controls button:hover {
+            background: rgba(255,255,255,0.08);
+            color: var(--text-color);
+        }
+        .title-bar .window-controls .close-btn:hover {
+            background: #e74c3c;
+            color: white;
+        }
+
+        /* ===== Sohbet Alanı ===== */
+        .chat-container {
+            flex: 1;
+            background: var(--panel-color);
+            margin: 0 12px 6px 12px;
+            border-radius: 16px;
+            overflow-y: auto;
+            padding: 16px 20px;
+            position: relative;
+            z-index: 2;
+            scroll-behavior: smooth;
+            min-height: 0;
+        }
+
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-container::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.02);
+            border-radius: 10px;
+        }
+        .chat-container::-webkit-scrollbar-thumb {
+            background: var(--glow-color);
+            border-radius: 10px;
+        }
+
+        .message {
+            margin-bottom: 18px;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .message .sender {
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 2px;
+        }
+        .message .sender.bot {
+            color: #89bfff;
+        }
+        .message .sender.user {
+            color: #b9e1ff;
+        }
+
+        .message .content {
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background: rgba(255,255,255,0.02);
+            padding: 6px 12px;
+            border-radius: 10px;
+            display: inline-block;
+            max-width: 95%;
+        }
+
+        .message.user .content {
+            background: rgba(37, 140, 255, 0.12);
+            border-left: 3px solid var(--glow-color);
+        }
+
+        .message.bot .content {
+            background: rgba(255,255,255,0.03);
+            border-left: 3px solid #5a8ab5;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== Yazıyor... göstergesi ===== */
+        .typing-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255,255,255,0.03);
+            border-left: 3px solid #5a8ab5;
+            padding: 10px 14px;
+            border-radius: 10px;
+        }
+        .typing-indicator span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--glow-color);
+            display: inline-block;
+            animation: typingBounce 1.2s infinite ease-in-out;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+            30% { transform: translateY(-5px); opacity: 1; }
+        }
+
+        /* ===== Mikrofon & Dışa Aktar Butonları ===== */
+        .icon-btn {
+            background: #18243a;
+            border: none;
+            color: var(--muted-color);
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+            flex-shrink: 0;
+        }
+        .icon-btn:hover {
+            background: #223252;
+            color: var(--text-color);
+        }
+        .icon-btn.listening {
+            background: #e74c3c;
+            color: white;
+            animation: micPulse 1s infinite;
+        }
+        @keyframes micPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.5); }
+            50% { box-shadow: 0 0 0 8px rgba(231, 76, 60, 0); }
+        }
+
+        /* ===== Alt Bilgi ===== */
+        .footer {
+            text-align: center;
+            font-size: 11px;
+            font-style: italic;
+            color: var(--muted-color);
+            padding: 2px 0 4px 0;
+            z-index: 2;
+            opacity: 0.6;
+            letter-spacing: 0.3px;
+        }
+
+        /* ===== Giriş Alanı ===== */
+        .input-row {
+            background: var(--bg-color);
+            padding: 8px 16px 12px 16px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            z-index: 2;
+            flex-shrink: 0;
+        }
+
+        .input-row input {
+            flex: 1;
+            background: #18243a;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 30px;
+            color: var(--text-color);
+            font-size: 14px;
+            outline: none;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .input-row input:focus {
+            box-shadow: 0 0 0 2px var(--glow-color);
+        }
+        .input-row input::placeholder {
+            color: #5a7a9a;
+        }
+
+        .input-row button {
+            background: var(--glow-color);
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 10px 22px;
+            border-radius: 30px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .input-row button:hover {
+            background: #4ea4ff;
+            transform: scale(1.02);
+        }
+        .input-row button:active {
+            transform: scale(0.97);
+        }
+
+        /* ===== Ayarlar Modal ===== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(6px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--panel-color);
+            border-radius: 24px;
+            padding: 32px 40px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.06);
+            animation: modalIn 0.25s ease;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: var(--text-color);
+            text-align: center;
+        }
+
+        .modal label {
+            display: block;
+            font-weight: 500;
+            margin-top: 14px;
+            color: var(--muted-color);
+            font-size: 14px;
+        }
+
+        .modal .color-preview {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-top: 6px;
+        }
+
+        .modal .color-preview input[type="color"] {
+            width: 50px;
+            height: 50px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .modal .color-preview span {
+            font-size: 14px;
+            background: rgba(255,255,255,0.05);
+            padding: 6px 14px;
+            border-radius: 20px;
+            color: var(--text-color);
+            font-family: monospace;
+        }
+
+        .modal .lang-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .modal .lang-buttons button {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: #263a5b;
+            color: var(--text-color);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .modal .lang-buttons button:hover {
+            background: #2f4a72;
+        }
+        .modal .lang-buttons button.active {
+            background: var(--glow-color);
+            border-color: var(--glow-color);
+        }
+
+        .modal .close-modal-btn {
+            display: block;
+            width: 100%;
+            margin-top: 24px;
+            padding: 10px;
+            background: #263a5b;
+            border: none;
+            color: var(--text-color);
+            border-radius: 30px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .modal .close-modal-btn:hover {
+            background: #3a5277;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 640px) {
+            .window {
+                height: 95vh;
+                border-radius: 20px;
+                max-height: 95vh;
+            }
+            .title-bar .brand {
+                font-size: 18px;
+            }
+            .title-bar .settings-btn {
+                font-size: 12px;
+            }
+            .input-row input {
+                font-size: 13px;
+                padding: 10px 14px;
+            }
+            .input-row button {
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            .modal {
+                padding: 24px 20px;
+            }
+        }
+
+        /* ===== Scroll genel ===== */
+        .chat-container {
+            scrollbar-width: thin;
+            scrollbar-color: var(--glow-color) transparent;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ======== ANA PENCERE ======== -->
+    <div class="window" id="appWindow">
+
+        <!-- Başlık Çubuğu -->
+        <div class="title-bar" id="titleBar">
+            <div class="left">
+                <button class="settings-btn" id="settingsBtn">⚙ Ayarlar</button>
+                <span class="brand">BRQT</span>
+            </div>
+            <div class="window-controls">
+                <button id="minimizeBtn" title="Küçült">—</button>
+                <button id="maximizeBtn" title="Büyült">□</button>
+                <button class="close-btn" id="closeBtn" title="Kapat">✕</button>
+            </div>
+        </div>
+
+        <!-- Sohbet Alanı -->
+        <div class="chat-container" id="chatContainer"></div>
+
+        <!-- Alt Bilgi -->
+        <div class="footer">Brain Response Quality Technology</div>
+
+        <!-- Giriş Alanı -->
+        <div class="input-row">
+            <button class="icon-btn" id="micBtn" title="Sesli komut">🎤</button>
+            <input type="text" id="userInput" placeholder="Mesajınızı yazın..." autofocus>
+            <button id="sendBtn">Gönder</button>
+            <button class="icon-btn" id="exportBtn" title="Sohbeti indir">⬇</button>
+        </div>
+    </div>
+
+    <!-- ======== AYARLAR MODAL ======== -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <h2>⚙ BRQT Ayarları</h2>
+
+            <label>Fon ışığı rengi</label>
+            <div class="color-preview">
+                <input type="color" id="glowColorPicker" value="#258CFF">
+                <span id="glowColorHex">#258CFF</span>
+            </div>
+
+            <label>Varsayılan Arama Dili</label>
+            <div class="lang-buttons">
+                <button id="langTr" class="active">🇹🇷 Türkçe</button>
+                <button id="langEn">🇬🇧 English</button>
+            </div>
+
+            <label>Sesli Yanıt (BRQT cevapları seslendirsin)</label>
+            <div class="lang-buttons">
+                <button id="voiceOnBtn">🔊 Açık</button>
+                <button id="voiceOffBtn" class="active">🔇 Kapalı</button>
+            </div>
+
+            <button class="close-modal-btn" id="closeModalBtn">Kapat</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  BRQT – WEB SÜRÜMÜ (Tüm mantık JavaScript ile)
+        // ============================================================
+
+        (function() {
+            'use strict';
+
+            // --- DOM referansları ---
+            const chatEl = document.getElementById('chatContainer');
+            const inputEl = document.getElementById('userInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const settingsBtn = document.getElementById('settingsBtn');
+            const modal = document.getElementById('settingsModal');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const glowPicker = document.getElementById('glowColorPicker');
+            const glowHex = document.getElementById('glowColorHex');
+            const langTr = document.getElementById('langTr');
+            const langEn = document.getElementById('langEn');
+            const closeWinBtn = document.getElementById('closeBtn');
+            const minimizeBtn = document.getElementById('minimizeBtn');
+            const maximizeBtn = document.getElementById('maximizeBtn');
+            const appWindow = document.getElementById('appWindow');
+            const micBtn = document.getElementById('micBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const voiceOnBtn = document.getElementById('voiceOnBtn');
+            const voiceOffBtn = document.getElementById('voiceOffBtn');
+
+            // --- Google Custom Search API Ayarları ---
+            // Buraya kendi Google API anahtarınızı ve Arama Motoru Kimliğinizi (cx) girin:
+            // 1) https://console.cloud.google.com/ adresinden bir proje oluşturun, "Custom Search API"yi
+            //    etkinleştirin ve bir API anahtarı alın.
+            // 2) https://programmablesearchengine.google.com/ adresinden ücretsiz bir Programmable Search
+            //    Engine oluşturun ve "cx" (Arama motoru kimliği) değerini alın. Motoru "tüm web'de ara"
+            //    olacak şekilde ayarlamayı unutmayın.
+            // Not: Ücretsiz katmanda günde 100 sorgu hakkı vardır; sonrasında ücretlidir.
+            const GOOGLE_API_KEY = ''; // örn: 'AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+            const GOOGLE_CX = '';      // örn: '017576662512468239146:omuauf_lfve'
+
+            // --- Durum ---
+            let glowColor = '#258CFF';
+            let searchLang = 'tr';        // 'tr' veya 'en'
+            let isMaximized = false;
+            let voiceReplyEnabled = false;
+            let isListening = false;
+            let recognition = null;
+
+            // Veri depoları (localStorage)
+            let notes = [];
+            let reminders = [];
+            let shortcuts = {};
+            let passwords = {};
+            let alarms = [];
+
+            // Son arama sonuçları (dosya / uygulama) – web'de placeholder
+            let lastFiles = [];
+            let lastApps = [];
+            let lastKind = null; // 'file' veya 'app'
+
+            // Hatırlatıcı / Alarm kontrolü
+            let reminderInterval = null;
+
+            // --- Yardımcı Fonksiyonlar ---
+
+            // Veri yükleme / kaydetme
+            function loadData(key, defaultVal) {
+                try {
+                    const raw = localStorage.getItem('brqt_' + key);
+                    return raw ? JSON.parse(raw) : defaultVal;
+                } catch { return defaultVal; }
+            }
+            function saveData(key, data) {
+                try {
+                    localStorage.setItem('brqt_' + key, JSON.stringify(data));
+                } catch {}
+            }
+
+            function loadAllData() {
+                notes = loadData('notes', []);
+                reminders = loadData('reminders', []);
+                shortcuts = loadData('shortcuts', {});
+                passwords = loadData('passwords', {});
+                alarms = loadData('alarms', []);
+                // Glow ve dil
+                const savedGlow = localStorage.getItem('brqt_glow');
+                if (savedGlow) {
+                    glowColor = savedGlow;
+                    glowPicker.value = glowColor;
+                    glowHex.textContent = glowColor;
+                    applyGlow(glowColor);
+                }
+                const savedLang = localStorage.getItem('brqt_lang');
+                if (savedLang === 'en' || savedLang === 'tr') {
+                    searchLang = savedLang;
+                    updateLangButtons();
+                }
+                const savedVoice = localStorage.getItem('brqt_voice_reply');
+                voiceReplyEnabled = savedVoice === '1';
+                updateVoiceButtons();
+            }
+
+            function saveAllData() {
+                saveData('notes', notes);
+                saveData('reminders', reminders);
+                saveData('shortcuts', shortcuts);
+                saveData('passwords', passwords);
+                saveData('alarms', alarms);
+                localStorage.setItem('brqt_glow', glowColor);
+                localStorage.setItem('brqt_lang', searchLang);
+                localStorage.setItem('brqt_voice_reply', voiceReplyEnabled ? '1' : '0');
+            }
+
+            function updateVoiceButtons() {
+                if (!voiceOnBtn || !voiceOffBtn) return;
+                voiceOnBtn.classList.toggle('active', voiceReplyEnabled);
+                voiceOffBtn.classList.toggle('active', !voiceReplyEnabled);
+            }
+
+            // Glow rengini uygula
+            function applyGlow(color) {
+                document.documentElement.style.setProperty('--glow-color', color);
+                // Window glow
+                appWindow.style.boxShadow = `0 0 30px rgba(0,0,0,0.8), 0 0 60px ${color}, 0 0 100px ${color}40`;
+                // Pseudo-element rengi
+                const style = document.createElement('style');
+                style.id = 'dynamic-glow-style';
+                style.textContent = `
+                    .window::before { background: ${color} !important; }
+                    .chat-container::-webkit-scrollbar-thumb { background: ${color}; }
+                    .input-row input:focus { box-shadow: 0 0 0 2px ${color}; }
+                    .input-row button { background: ${color}; }
+                    .input-row button:hover { background: ${adjustBrightness(color, 20)}; }
+                    .modal .lang-buttons button.active { background: ${color}; border-color: ${color}; }
+                    .message.user .content { border-left-color: ${color}; }
+                `;
+                const old = document.getElementById('dynamic-glow-style');
+                if (old) old.remove();
+                document.head.appendChild(style);
+                glowHex.textContent = color;
+                glowPicker.value = color;
+                localStorage.setItem('brqt_glow', color);
+            }
+
+            function adjustBrightness(hex, percent) {
+                // Basit brightness ayarı (sadece yaklaşık)
+                let r = parseInt(hex.slice(1,3), 16);
+                let g = parseInt(hex.slice(3,5), 16);
+                let b = parseInt(hex.slice(5,7), 16);
+                r = Math.min(255, Math.max(0, r + percent));
+                g = Math.min(255, Math.max(0, g + percent));
+                b = Math.min(255, Math.max(0, b + percent));
+                return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+            }
+
+            // Dil butonlarını güncelle
+            function updateLangButtons() {
+                langTr.classList.toggle('active', searchLang === 'tr');
+                langEn.classList.toggle('active', searchLang === 'en');
+            }
+
+            // Mesaj ekleme
+            function addMessage(sender, text) {
+                const div = document.createElement('div');
+                div.className = `message ${sender === 'BRQT' ? 'bot' : 'user'}`;
+                const senderSpan = document.createElement('div');
+                senderSpan.className = `sender ${sender === 'BRQT' ? 'bot' : 'user'}`;
+                senderSpan.textContent = sender;
+                const contentSpan = document.createElement('div');
+                contentSpan.className = 'content';
+                // Metni HTML olarak değil, düz metin olarak göster (ama \n korunsun)
+                contentSpan.textContent = text;
+                div.appendChild(senderSpan);
+                div.appendChild(contentSpan);
+                chatEl.appendChild(div);
+                chatEl.scrollTop = chatEl.scrollHeight;
+
+                if (sender === 'BRQT' && voiceReplyEnabled) {
+                    speakText(text);
+                }
+            }
+
+            // --- "BRQT yazıyor..." göstergesi ---
+            let typingEl = null;
+            function showTyping() {
+                if (typingEl) return;
+                typingEl = document.createElement('div');
+                typingEl.className = 'message bot';
+                typingEl.innerHTML = `
+                    <div class="sender bot">BRQT</div>
+                    <div class="typing-indicator"><span></span><span></span><span></span></div>
+                `;
+                chatEl.appendChild(typingEl);
+                chatEl.scrollTop = chatEl.scrollHeight;
+            }
+            function hideTyping() {
+                if (typingEl) {
+                    typingEl.remove();
+                    typingEl = null;
+                }
+            }
+
+            // --- Sesli Yanıt (Text-to-Speech) ---
+            function speakText(text) {
+                try {
+                    if (!('speechSynthesis' in window)) return;
+                    window.speechSynthesis.cancel();
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.lang = searchLang === 'tr' ? 'tr-TR' : 'en-US';
+                    utter.rate = 1;
+                    window.speechSynthesis.speak(utter);
+                } catch {}
+            }
+
+            // --- Sesli Komut (Speech-to-Text) ---
+            function initSpeechRecognition() {
+                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SR) return null;
+                const rec = new SR();
+                rec.lang = searchLang === 'tr' ? 'tr-TR' : 'en-US';
+                rec.interimResults = false;
+                rec.maxAlternatives = 1;
+                rec.onresult = (e) => {
+                    const transcript = e.results[0][0].transcript;
+                    inputEl.value = transcript;
+                    sendMessage();
+                };
+                rec.onerror = () => {
+                    isListening = false;
+                    micBtn.classList.remove('listening');
+                };
+                rec.onend = () => {
+                    isListening = false;
+                    micBtn.classList.remove('listening');
+                };
+                return rec;
+            }
+
+            function toggleListening() {
+                if (!recognition) {
+                    recognition = initSpeechRecognition();
+                    if (!recognition) {
+                        addMessage('BRQT', '🎤 Tarayıcınız sesli komut özelliğini desteklemiyor. Chrome kullanmayı deneyin.');
+                        return;
+                    }
+                }
+                if (isListening) {
+                    recognition.stop();
+                    isListening = false;
+                    micBtn.classList.remove('listening');
+                } else {
+                    recognition.lang = searchLang === 'tr' ? 'tr-TR' : 'en-US';
+                    try {
+                        recognition.start();
+                        isListening = true;
+                        micBtn.classList.add('listening');
+                    } catch {}
+                }
+            }
+
+            // --- Sohbeti Dışa Aktarma ---
+            function exportChat() {
+                const msgs = Array.from(chatEl.querySelectorAll('.message')).map(m => {
+                    const sender = m.querySelector('.sender')?.textContent || '';
+                    const content = m.querySelector('.content')?.textContent || '';
+                    return `${sender}: ${content}`;
+                });
+                if (!msgs.length) {
+                    addMessage('BRQT', 'Dışa aktarılacak bir sohbet bulunamadı.');
+                    return;
+                }
+                const blob = new Blob([msgs.join('\n\n')], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+                a.href = url;
+                a.download = `BRQT_sohbet_${stamp}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                addMessage('BRQT', '✅ Sohbet geçmişi .txt olarak indirildi.');
+            }
+
+            // Hoşgeldin mesajı
+            function showWelcome() {
+                const welcome =
+                    `🌟 BRQT'ye Hoş Geldiniz!
+
+        Burak ve Emre adlı iki genç girişimci tarafından geliştirildim.
+        Instagram: Burak->@burak_msz , Emre->@emr_e9960 😊
+
+        💡 Özellikler:
+        • Web Arama (Google, YouTube, Wikipedia)
+        • Hatırlatıcılar ve Alarmlar
+        • Notlar
+        • Şifre Yöneticisi
+        • Sistem Bilgileri
+        • Birim Dönüştürücü
+        • Çeviri (Google Translate ile)
+        • Süreç Yönetimi (web'de sınırlı)
+        • Dosya ve Uygulama Arama (web'de simüle)
+        • Pano Yönetimi
+        • İnternet Hız Testi (simüle)
+        • 🎤 Sesli Komut (konuşarak yazma)
+        • 🔊 Sesli Yanıt (cevapları dinleme)
+        • ⬇ Sohbeti Dışa Aktarma
+        • Ve daha fazlası...
+
+        📝 Yardım için 'yardım' yazın.`;
+                addMessage('BRQT', welcome);
+            }
+
+            // ============================================================
+            //  KOMUT İŞLEYİCİLER (orijinal Python mantığına uygun)
+            // ============================================================
+
+            // --- İngilizce tespiti ---
+            function isEnglish(text) {
+                const words = ['hello','hi','how','what','where','when','why','please','thanks','thank',
+                    'file','open','search','time','date','help','can','you','system','ram','cpu',
+                    'processor','storage','memory','disk','google','youtube','wikipedia','web',
+                    'browser','weather','remind','note','shortcut','password','screenshot',
+                    'shutdown','restart','sleep','speed','test','clipboard','copy','paste'
+                ];
+                const tokens = text.toLowerCase().match(/[a-z]+/g) || [];
+                return tokens.some(t => words.includes(t));
+            }
+
+            // --- Web Arama ---
+            function searchWeb(query, engine) {
+                const encoded = encodeURIComponent(query);
+                const urls = {
+                    google: `https://www.google.com/search?q=${encoded}&hl=${searchLang === 'tr' ? 'tr' : 'en'}`,
+                    youtube: `https://www.youtube.com/results?search_query=${encoded}`,
+                    wikipedia: `https://${searchLang === 'tr' ? 'tr' : 'en'}.wikipedia.org/wiki/${encoded}`,
+                    duckduckgo: `https://duckduckgo.com/?q=${encoded}`
+                };
+                const url = urls[engine] || urls.google;
+                window.open(url, '_blank');
+                const names = { google:'Google', youtube:'YouTube', wikipedia:'Wikipedia', duckduckgo:'DuckDuckGo' };
+                addMessage('BRQT', `✅ '${query}' için ${names[engine] || engine} araması açıldı.`);
+            }
+
+            // --- Ücretsiz, anahtar gerektirmeyen yedek arama (DuckDuckGo Instant Answer API) ---
+            // Google API anahtarı tanımlı değilse bu fonksiyon devreye girer.
+            // Herhangi bir kayıt/API anahtarı gerektirmez, tamamen ücretsizdir.
+            // Not: DuckDuckGo'nun bu ücretsiz servisi Google kadar geniş kapsamlı değildir;
+            // en iyi sonucu tanım/özet gerektiren sorularda verir (ör. "X nedir", "Y kimdir").
+            async function duckDuckGoAnswer(query, english) {
+                try {
+                    const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_redirect=1&no_html=1&skip_disambig=1`;
+                    const res = await fetch(url);
+                    const data = await res.json();
+
+                    const abstract = (data.AbstractText || data.Abstract || '').trim();
+                    const answer = (data.Answer || '').trim();
+                    const definition = (data.Definition || '').trim();
+                    const source = data.AbstractSource || data.DefinitionSource || 'DuckDuckGo';
+                    const url2 = data.AbstractURL || data.DefinitionURL || '';
+
+                    let body = answer || abstract || definition;
+
+                    // Bazı sorularda ana metin boş gelir, ilgili konular listesinden derle.
+                    if (!body && Array.isArray(data.RelatedTopics) && data.RelatedTopics.length > 0) {
+                        const related = data.RelatedTopics
+                            .filter(t => t && t.Text)
+                            .slice(0, 3)
+                            .map(t => `• ${t.Text}`)
+                            .join('\n');
+                        if (related) body = related;
+                    }
+
+                    if (!body) return null; // Çağıran fonksiyon başka bir kaynağa geçsin.
+
+                    const header = english
+                        ? `🔎 Here's what I found for "${query}" (source: ${source}):\n\n`
+                        : `🔎 "${query}" için bulduklarım (kaynak: ${source}):\n\n`;
+
+                    return header + body + (url2 ? `\n\n${url2}` : '');
+                } catch (err) {
+                    return null;
+                }
+            }
+
+            // --- Uzun metinleri MyMemory API ile parça parça Türkçe'ye çeviren yardımcı ---
+            // MyMemory'nin ücretsiz katmanı tek istekte uzun metinleri kabul etmediği için
+            // metin cümlelere bölünüp sırayla çevrilir, sonra birleştirilir.
+            async function translateToTurkish(text) {
+                if (!text) return text;
+                // Cümlelere böl (nokta/soru/ünlem sonrası), ~400 karaktere kadar öbekle.
+                const sentences = text.match(/[^.!?]+[.!?]*/g) || [text];
+                const chunks = [];
+                let current = '';
+                for (const s of sentences) {
+                    if ((current + s).length > 400 && current) {
+                        chunks.push(current.trim());
+                        current = s;
+                    } else {
+                        current += s;
+                    }
+                }
+                if (current.trim()) chunks.push(current.trim());
+
+                const translatedChunks = [];
+                for (const chunk of chunks) {
+                    try {
+                        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=en|tr`);
+                        const data = await res.json();
+                        translatedChunks.push(
+                            (data.responseData && data.responseData.translatedText) || chunk
+                        );
+                    } catch {
+                        translatedChunks.push(chunk); // Çeviri başarısız olursa orijinali koru.
+                    }
+                }
+                return translatedChunks.join(' ');
+            }
+
+
+            // DuckDuckGo bir şey bulamazsa bu devreye girer. Tamamen ücretsiz, kayıt/API
+            // anahtarı gerektirmez ve gerçek Wikipedia içeriğinden özet döndürür.
+            // Kapsamı artırmak için önce TAM METİN arama (list=search) denenir; bu,
+            // sorgu bir başlıkla birebir örtüşmese bile ilgili sayfayı bulabilir.
+            // Sonuç yoksa başlık-öneki eşleşmesi (opensearch) yedek olarak denenir.
+            async function wikipediaAnswer(query, english, langOverride) {
+                const lang = langOverride || (searchLang === 'tr' ? 'tr' : 'en');
+                try {
+                    let title = null;
+
+                    // 1) Tam metin arama - en geniş kapsam.
+                    const searchUrl = `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&srlimit=1&origin=*`;
+                    const searchRes = await fetch(searchUrl);
+                    const searchData = await searchRes.json();
+                    const hits = searchData && searchData.query && searchData.query.search;
+                    if (hits && hits[0] && hits[0].title) title = hits[0].title;
+
+                    // 2) Bulunamadıysa başlık-öneki eşleşmesi (opensearch) dene.
+                    if (!title) {
+                        const osUrl = `https://${lang}.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=1&namespace=0&format=json&origin=*`;
+                        const osRes = await fetch(osUrl);
+                        const osData = await osRes.json();
+                        title = osData && osData[1] && osData[1][0];
+                    }
+
+                    if (!title) return null;
+
+                    // 3) Bulunan başlığın özetini çek.
+                    const summaryUrl = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+                    const summaryRes = await fetch(summaryUrl);
+                    if (!summaryRes.ok) return null;
+                    const summaryData = await summaryRes.json();
+
+                    const extract = (summaryData.extract || '').trim();
+                    if (!extract) return null;
+
+                    const pageUrl = (summaryData.content_urls && summaryData.content_urls.desktop && summaryData.content_urls.desktop.page) || '';
+
+                    // Kaynak İngilizce Wikipedia ise ve kullanıcı Türkçe konuşuyorsa,
+                    // metni ücretsiz MyMemory API'si ile Türkçe'ye çevirip öyle sun.
+                    let finalExtract = extract;
+                    let translatedNote = '';
+                    if (lang === 'en' && !english) {
+                        finalExtract = await translateToTurkish(extract);
+                        translatedNote = ' - çevirisi yapıldı';
+                    }
+
+                    const sourceLabel = (lang === 'en' && !english)
+                        ? `İngilizce Wikipedia - ${title}${translatedNote}`
+                        : `Wikipedia - ${title}`;
+                    const header = english
+                        ? `🔎 Here's what I found for "${query}" (source: Wikipedia - ${title}):\n\n`
+                        : `🔎 "${query}" için bulduklarım (kaynak: ${sourceLabel}):\n\n`;
+
+                    return header + finalExtract + (pageUrl ? `\n\n${pageUrl}` : '');
+                } catch (err) {
+                    return null;
+                }
+            }
+
+            // --- Google'dan gerçek sonuçlarla cevap üretme ---
+            // Bu fonksiyon önce Google Custom Search API'sini (API anahtarı tanımlıysa)
+            // dener; anahtar yoksa sırasıyla ücretsiz DuckDuckGo ve Wikipedia API'lerine
+            // düşer. Artık hiçbir aşamada tarayıcıda yeni sekme açmaz; sonucu doğrudan
+            // sohbette kendisi bulup söyler.
+            async function googleAnswer(query, english) {
+                if (!GOOGLE_API_KEY || !GOOGLE_CX) {
+                    // 1. ücretsiz yedek: DuckDuckGo Instant Answer API.
+                    const ddgReply = await duckDuckGoAnswer(query, english);
+                    if (ddgReply) return ddgReply;
+
+                    // 2. ücretsiz yedek: Wikipedia özet API'si (kullanıcının dilinde).
+                    const wikiReply = await wikipediaAnswer(query, english);
+                    if (wikiReply) return wikiReply;
+
+                    // 3. ücretsiz yedek: Türkçe Wikipedia'da bulunamadıysa, çok daha
+                    // geniş kapsamlı olan İngilizce Wikipedia'ya da bakılır.
+                    if (searchLang === 'tr') {
+                        const wikiEnReply = await wikipediaAnswer(query, english, 'en');
+                        if (wikiEnReply) return wikiEnReply;
+                    }
+
+                    // Hiçbiri sonuç veremediyse artık sekme AÇMIYORUZ; dürüstçe
+                    // bulamadığını söylüyor ve daha geniş kapsam için Google API
+                    // anahtarı eklemeyi öneriyor.
+                    return english
+                        ? `I looked this up myself (DuckDuckGo + Wikipedia in both languages) but couldn't find a direct answer for "${query}". For full web coverage, add a free GOOGLE_API_KEY and GOOGLE_CX at the top of the script (Google Custom Search gives 100 free searches/day) — then I can answer almost anything directly in chat.`
+                        : `"${query}" için kendim araştırdım (DuckDuckGo + iki dilde Wikipedia) ama doğrudan bir cevap bulamadım. Daha geniş kapsamlı sonuçlar için script'in başındaki GOOGLE_API_KEY ve GOOGLE_CX alanlarını doldurabilirsin (Google Custom Search günde 100 ücretsiz arama verir) — o zaman hemen hemen her şeyi doğrudan sohbette yanıtlayabilirim.`;
+                }
+                try {
+                    const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${GOOGLE_CX}&q=${encodeURIComponent(query)}&num=5&hl=${searchLang === 'tr' ? 'tr' : 'en'}`;
+                    const res = await fetch(url);
+                    const data = await res.json();
+
+                    if (data.error) {
+                        return english
+                            ? `❌ Google Search API error: ${data.error.message || 'unknown error'}`
+                            : `❌ Google Arama API hatası: ${data.error.message || 'bilinmeyen hata'}`;
+                    }
+
+                    const items = data.items || [];
+                    if (items.length === 0) {
+                        return english
+                            ? `I searched Google but found no results for "${query}".`
+                            : `Google'da "${query}" için sonuç bulamadım.`;
+                    }
+
+                    const top = items.slice(0, 3);
+                    let reply = english
+                        ? `🔎 Here's what I found on Google for "${query}":\n\n`
+                        : `🔎 "${query}" için Google'da bulduklarım:\n\n`;
+
+                    top.forEach((item, i) => {
+                        const title = item.title || '';
+                        const snippet = (item.snippet || '').replace(/\s+/g, ' ').trim();
+                        const link = item.link || '';
+                        reply += `${i + 1}. ${title}\n${snippet}\n${link}\n\n`;
+                    });
+
+                    return reply.trim();
+                } catch (err) {
+                    return english
+                        ? "❌ I couldn't reach Google's search API right now."
+                        : "❌ Şu anda Google arama servisine ulaşamadım.";
+                }
+            }
+
+            // --- Ücretsiz, anahtar gerektirmeyen gerçek hava durumu API'si (Open-Meteo) ---
+            // Open-Meteo tamamen ücretsizdir, kayıt/API anahtarı gerektirmez.
+            // Önce şehir adını enlem/boylama çevirir (geocoding), sonra o koordinat
+            // için güncel hava durumunu getirir.
+            const WMO_CODES_TR = {
+                0: '☀️ Açık', 1: '🌤️ Az bulutlu', 2: '⛅ Parçalı bulutlu', 3: '☁️ Kapalı',
+                45: '🌫️ Sisli', 48: '🌫️ Kırağı sisi', 51: '🌦️ Hafif çisenti', 53: '🌦️ Çisenti',
+                55: '🌦️ Yoğun çisenti', 61: '🌧️ Hafif yağmur', 63: '🌧️ Yağmur', 65: '🌧️ Şiddetli yağmur',
+                71: '🌨️ Hafif kar', 73: '🌨️ Kar', 75: '❄️ Şiddetli kar', 80: '🌦️ Sağanak',
+                81: '🌧️ Sağanak yağış', 82: '⛈️ Şiddetli sağanak', 95: '⛈️ Gök gürültülü fırtına',
+                96: '⛈️ Dolu ile fırtına', 99: '⛈️ Şiddetli dolu fırtınası'
+            };
+
+            async function weatherAnswer(city, english) {
+                try {
+                    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=${searchLang === 'tr' ? 'tr' : 'en'}&format=json`;
+                    const geoRes = await fetch(geoUrl);
+                    const geoData = await geoRes.json();
+                    const place = geoData && geoData.results && geoData.results[0];
+                    if (!place) {
+                        return english
+                            ? `❌ I couldn't find a location named "${city}".`
+                            : `❌ "${city}" adında bir yer bulamadım.`;
+                    }
+
+                    const wUrl = `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m`;
+                    const wRes = await fetch(wUrl);
+                    const wData = await wRes.json();
+                    const cur = wData && wData.current;
+                    if (!cur) {
+                        return english
+                            ? `❌ I couldn't get the weather for "${city}" right now.`
+                            : `❌ "${city}" için hava durumu şu anda alınamadı.`;
+                    }
+
+                    const desc = WMO_CODES_TR[cur.weather_code] || '🌡️ Bilinmiyor';
+                    const placeName = `${place.name}${place.country ? ', ' + place.country : ''}`;
+
+                    if (english) {
+                        return `🌦️ Weather in ${placeName}:\n${desc}\nTemperature: ${cur.temperature_2m}°C (feels like ${cur.apparent_temperature}°C)\nHumidity: ${cur.relative_humidity_2m}%\nWind: ${cur.wind_speed_10m} km/h`;
+                    }
+                    return `🌦️ ${placeName} hava durumu:\n${desc}\nSıcaklık: ${cur.temperature_2m}°C (hissedilen ${cur.apparent_temperature}°C)\nNem: ${cur.relative_humidity_2m}%\nRüzgar: ${cur.wind_speed_10m} km/h`;
+                } catch (err) {
+                    return english
+                        ? "❌ I couldn't reach the weather service right now."
+                        : "❌ Şu anda hava durumu servisine ulaşamadım.";
+                }
+            }
+
+            // --- Ücretsiz, anahtar gerektirmeyen kripto para fiyatı (CoinGecko) ---
+            const CRYPTO_IDS = {
+                'bitcoin': 'bitcoin', 'btc': 'bitcoin',
+                'ethereum': 'ethereum', 'eth': 'ethereum',
+                'dogecoin': 'dogecoin', 'doge': 'dogecoin',
+                'solana': 'solana', 'sol': 'solana',
+                'ripple': 'ripple', 'xrp': 'ripple',
+                'cardano': 'cardano', 'ada': 'cardano'
+            };
+            async function cryptoPrice(coinRaw, english) {
+                const key = coinRaw.trim().toLowerCase();
+                const id = CRYPTO_IDS[key] || key;
+                try {
+                    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(id)}&vs_currencies=usd,try`);
+                    const data = await res.json();
+                    const info = data && data[id];
+                    if (!info) {
+                        return english
+                            ? `❌ I couldn't find a cryptocurrency named "${coinRaw}".`
+                            : `❌ "${coinRaw}" adında bir kripto para bulamadım.`;
+                    }
+                    return english
+                        ? `💰 ${id}: $${info.usd}`
+                        : `💰 ${id}: ${info.try} TL ($${info.usd})`;
+                } catch (err) {
+                    return english
+                        ? "❌ I couldn't reach the crypto price service right now."
+                        : "❌ Şu anda kripto fiyat servisine ulaşamadım.";
+                }
+            }
+
+            // --- Ücretsiz, anahtar gerektirmeyen resmi tatiller (Nager.Date) ---
+            async function publicHolidays(english) {
+                const year = new Date().getFullYear();
+                try {
+                    const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/TR`);
+                    const data = await res.json();
+                    if (!Array.isArray(data) || data.length === 0) {
+                        return english
+                            ? `❌ I couldn't find public holidays for ${year}.`
+                            : `❌ ${year} yılı için resmi tatil bulamadım.`;
+                    }
+                    const today = new Date();
+                    const upcoming = data.filter(h => new Date(h.date) >= today).slice(0, 5);
+                    const list = (upcoming.length > 0 ? upcoming : data.slice(0, 5))
+                        .map(h => `• ${h.date} — ${h.localName}`)
+                        .join('\n');
+                    return english
+                        ? `📅 Upcoming public holidays in Turkey (${year}):\n\n${list}`
+                        : `📅 Türkiye'nin ${year} yılı yaklaşan resmi tatilleri:\n\n${list}`;
+                } catch (err) {
+                    return english
+                        ? "❌ I couldn't reach the holidays service right now."
+                        : "❌ Şu anda resmi tatil servisine ulaşamadım.";
+                }
+            }
+
+            // --- Ücretsiz, anahtar gerektirmeyen ülke bilgisi (REST Countries) ---
+            async function countryInfo(countryRaw, english) {
+                try {
+                    const res = await fetch(`https://restcountries.com/v3.1/name/${encodeURIComponent(countryRaw.trim())}?fields=name,capital,population,region,currencies,languages,flag`);
+                    const data = await res.json();
+                    const c = Array.isArray(data) ? data[0] : null;
+                    if (!c || !c.name) {
+                        return english
+                            ? `❌ I couldn't find a country named "${countryRaw}".`
+                            : `❌ "${countryRaw}" adında bir ülke bulamadım.`;
+                    }
+                    const capital = (c.capital && c.capital[0]) || '-';
+                    const currencies = c.currencies ? Object.values(c.currencies).map(cur => cur.name).join(', ') : '-';
+                    const languages = c.languages ? Object.values(c.languages).join(', ') : '-';
+                    const flag = c.flag || '';
+                    if (english) {
+                        return `${flag} ${c.name.common}\nCapital: ${capital}\nPopulation: ${c.population ? c.population.toLocaleString() : '-'}\nRegion: ${c.region || '-'}\nCurrency: ${currencies}\nLanguages: ${languages}`;
+                    }
+                    return `${flag} ${c.name.common}\nBaşkent: ${capital}\nNüfus: ${c.population ? c.population.toLocaleString() : '-'}\nBölge: ${c.region || '-'}\nPara birimi: ${currencies}\nDiller: ${languages}`;
+                } catch (err) {
+                    return english
+                        ? "❌ I couldn't reach the country info service right now."
+                        : "❌ Şu anda ülke bilgisi servisine ulaşamadım.";
+                }
+            }
+
+            // --- Ücretsiz, anahtar gerektirmeyen IP/konum bilgisi (ipapi.co) ---
+            async function ipLocationInfo(english) {
+                try {
+                    const res = await fetch('https://ipapi.co/json/');
+                    const data = await res.json();
+                    if (!data || data.error) {
+                        return english
+                            ? "❌ I couldn't determine your IP-based location right now."
+                            : "❌ IP tabanlı konum şu anda belirlenemedi.";
+                    }
+                    if (english) {
+                        return `🌐 IP: ${data.ip}\nCity: ${data.city}\nRegion: ${data.region}\nCountry: ${data.country_name}\nISP: ${data.org || '-'}`;
+                    }
+                    return `🌐 IP: ${data.ip}\nŞehir: ${data.city}\nBölge: ${data.region}\nÜlke: ${data.country_name}\nSağlayıcı: ${data.org || '-'}`;
+                } catch (err) {
+                    return english
+                        ? "❌ I couldn't reach the IP location service right now."
+                        : "❌ Şu anda IP konum servisine ulaşamadım.";
+                }
+            }
+
+            // --- Ücretsiz, anahtar gerektirmeyen isim analizi (Agify + Genderize + Nationalize) ---
+            async function nameAnalysis(nameRaw, english) {
+                const name = nameRaw.trim().split(/\s+/)[0]; // Bu API'ler tek kelimelik isim bekler.
+                try {
+                    const [ageRes, genderRes, natRes] = await Promise.all([
+                        fetch(`https://api.agify.io/?name=${encodeURIComponent(name)}`),
+                        fetch(`https://api.genderize.io/?name=${encodeURIComponent(name)}`),
+                        fetch(`https://api.nationalize.io/?name=${encodeURIComponent(name)}`)
+                    ]);
+                    const [ageData, genderData, natData] = await Promise.all([ageRes.json(), genderRes.json(), natRes.json()]);
+
+                    const age = ageData && ageData.age;
+                    const gender = genderData && genderData.gender;
+                    const topCountry = natData && natData.country && natData.country[0];
+
+                    const genderTr = gender === 'male' ? 'Erkek' : gender === 'female' ? 'Kadın' : 'Bilinmiyor';
+
+                    if (english) {
+                        return `🔤 Statistical guess for "${name}":\nLikely age: ${age ?? '-'}\nLikely gender: ${gender ?? 'unknown'}\nMost likely country: ${topCountry ? topCountry.country_id : '-'}\n(Based on public name-statistics APIs — not a real fact about this specific person.)`;
+                    }
+                    return `🔤 "${name}" ismi için istatistiksel tahmin:\nOlası yaş: ${age ?? '-'}\nOlası cinsiyet: ${genderTr}\nEn olası ülke: ${topCountry ? topCountry.country_id : '-'}\n(Bu, kamuya açık isim istatistiklerine dayanır — belirli bir kişi hakkında kesin bir bilgi değildir.)`;
+                } catch (err) {
+                    return english
+                        ? "❌ I couldn't reach the name-analysis service right now."
+                        : "❌ Şu anda isim analizi servisine ulaşamadım.";
+                }
+            }
+
+            // --- Ücretsiz, anahtar gerektirmeyen İngilizce sözlük (dictionaryapi.dev) ---
+            async function dictionaryDefine(word, english) {
+                try {
+                    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.trim())}`);
+                    if (!res.ok) {
+                        return english
+                            ? `❌ I couldn't find a definition for "${word}".`
+                            : `❌ "${word}" için bir tanım bulamadım.`;
+                    }
+                    const data = await res.json();
+                    const entry = data && data[0];
+                    const meaning = entry && entry.meanings && entry.meanings[0];
+                    const def = meaning && meaning.definitions && meaning.definitions[0] && meaning.definitions[0].definition;
+                    if (!def) {
+                        return english
+                            ? `❌ I couldn't find a definition for "${word}".`
+                            : `❌ "${word}" için bir tanım bulamadım.`;
+                    }
+                    const partOfSpeech = meaning.partOfSpeech || '';
+                    if (english) {
+                        return `📖 ${word} (${partOfSpeech}): ${def}`;
+                    }
+                    const translatedDef = await translateToTurkish(def);
+                    return `📖 ${word} (${partOfSpeech}): ${translatedDef}`;
+                } catch (err) {
+                    return english
+                        ? "❌ I couldn't reach the dictionary service right now."
+                        : "❌ Şu anda sözlük servisine ulaşamadım.";
+                }
+            }
+
+            // --- Dosya / Uygulama Arama (simüle) ---
+            function findFiles(query) {
+                // Gerçek dosya araması yapılamaz, örnek sonuçlar döndür
+                const sample = [
+                    'Belgeler/rapor.docx',
+                    'Masaüstü/proje.txt',
+                    'İndirilenler/foto.jpg',
+                    'Müzik/sarki.mp3',
+                    'Videolar/film.mp4'
+                ];
+                return sample.filter(f => f.toLowerCase().includes(query.toLowerCase())).map(f => ({ name: f, path: f }));
+            }
+
+            function findApps(query) {
+                const sample = [
+                    { name: 'Chrome', path: 'chrome.exe' },
+                    { name: 'Firefox', path: 'firefox.exe' },
+                    { name: 'VS Code', path: 'code.exe' },
+                    { name: 'Spotify', path: 'spotify.exe' },
+                    { name: 'Discord', path: 'discord.exe' }
+                ];
+                return sample.filter(a => a.name.toLowerCase().includes(query.toLowerCase()));
+            }
+
+            // --- Matematik ---
+            function safeMath(text) {
+                try {
+                    let expr = text.replace(/x/g, '*').replace(/×/g, '*').replace(/÷/g, '/');
+                    if (/^[\d+\-*/(). ]+$/.test(expr)) {
+                        const result = Function('"use strict"; return (' + expr + ')')();
+                        return `🧮 ${expr} = ${result}`;
+                    }
+                } catch {}
+                return null;
+            }
+
+            // --- Birim Dönüştürücü ---
+            // Not: async yapıldı çünkü döviz çevirisi artık sahte/sabit kur yerine
+            // ücretsiz ve anahtar gerektirmeyen open.er-api.com servisinden gerçek
+            // güncel kurları çekiyor.
+            async function convertUnits(text) {
+                const lower = text.toLowerCase();
+                // kg -> pound
+                let m = lower.match(/^(\d+\.?\d*)\s*kg\s*kaç\s*pound$/i);
+                if (m) return `⚖️ ${m[1]} kg = ${(parseFloat(m[1]) * 2.20462).toFixed(2)} pound`;
+                m = lower.match(/^(\d+\.?\d*)\s*pound\s*kaç\s*kg$/i);
+                if (m) return `⚖️ ${m[1]} pound = ${(parseFloat(m[1]) / 2.20462).toFixed(2)} kg`;
+                m = lower.match(/^(\d+\.?\d*)\s*mil\s*kaç\s*km$/i);
+                if (m) return `📏 ${m[1]} mil = ${(parseFloat(m[1]) * 1.60934).toFixed(2)} km`;
+                m = lower.match(/^(\d+\.?\d*)\s*km\s*kaç\s*mil$/i);
+                if (m) return `📏 ${m[1]} km = ${(parseFloat(m[1]) / 1.60934).toFixed(2)} mil`;
+                m = lower.match(/^(\d+\.?\d*)°?c\s*kaç\s*°?f$/i);
+                if (m) return `🌡️ ${m[1]}°C = ${(parseFloat(m[1]) * 9/5 + 32).toFixed(1)}°F`;
+                m = lower.match(/^(\d+\.?\d*)°?f\s*kaç\s*°?c$/i);
+                if (m) return `🌡️ ${m[1]}°F = ${((parseFloat(m[1]) - 32) * 5/9).toFixed(1)}°C`;
+                m = lower.match(/^(\d+\.?\d*)\s*usd\s*kaç\s*tl$/i);
+                if (m) return await convertCurrency(parseFloat(m[1]), 'USD', 'TRY');
+                m = lower.match(/^(\d+\.?\d*)\s*tl\s*kaç\s*usd$/i);
+                if (m) return await convertCurrency(parseFloat(m[1]), 'TRY', 'USD');
+                return null;
+            }
+
+            // --- Ücretsiz, anahtar gerektirmeyen gerçek zamanlı döviz kuru API'si ---
+            // open.er-api.com tamamen ücretsizdir, kayıt/API anahtarı gerektirmez.
+            async function convertCurrency(amount, from, to) {
+                try {
+                    const res = await fetch(`https://open.er-api.com/v6/latest/${from}`);
+                    const data = await res.json();
+                    if (data.result !== 'success' || !data.rates || !data.rates[to]) {
+                        return `❌ Döviz kuru alınamadı.`;
+                    }
+                    const rate = data.rates[to];
+                    const converted = (amount * rate).toFixed(2);
+                    const label = from === 'USD' ? 'USD' : 'TL';
+                    const toLabel = to === 'USD' ? 'USD' : 'TL';
+                    return `💰 ${amount} ${label} = ${converted} ${toLabel} (güncel kur: 1 ${from} = ${rate.toFixed(4)} ${to})`;
+                } catch (err) {
+                    return `❌ Şu anda döviz kuru servisine ulaşamadım.`;
+                }
+            }
+
+            // --- Çeviri (Google Translate API ücretsiz MyMemory üzerinden) ---
+            async function translateText(text) {
+                const lower = text.toLowerCase();
+                // İngilizce'de ne?
+                let m = lower.match(/^ingilizce'?de?\s*(.+?)\s*ne\??$/i);
+                if (m) {
+                    const word = m[1].trim();
+                    try {
+                        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=tr|en`);
+                        const data = await res.json();
+                        if (data.responseData && data.responseData.translatedText) {
+                            return `🔤 İngilizce: ${data.responseData.translatedText}`;
+                        }
+                        return `❌ Çeviri yapılamadı.`;
+                    } catch {
+                        return `❌ Çeviri servisine ulaşılamadı.`;
+                    }
+                }
+                // Ne demek?
+                m = lower.match(/^(.+?)\s*ne demek\??$/i);
+                if (m) {
+                    const word = m[1].trim();
+                    try {
+                        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|tr`);
+                        const data = await res.json();
+                        if (data.responseData && data.responseData.translatedText) {
+                            return `📖 '${word}' anlamı: ${data.responseData.translatedText}`;
+                        }
+                        return `❌ Anlam bulunamadı.`;
+                    } catch {
+                        return `❌ Çeviri servisine ulaşılamadı.`;
+                    }
+                }
+                // Türkçe'ye çevir
+                m = lower.match(/^türkçe'?ye?\s*çevir\s*:\s*(.+)$/i);
+                if (m) {
+                    const textToTranslate = m[1].trim();
+                    try {
+                        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(textToTranslate)}&langpair=en|tr`);
+                        const data = await res.json();
+                        if (data.responseData && data.responseData.translatedText) {
+                            return `🇹🇷 Türkçe: ${data.responseData.translatedText}`;
+                        }
+                        return `❌ Çeviri yapılamadı.`;
+                    } catch {
+                        return `❌ Çeviri servisine ulaşılamadı.`;
+                    }
+                }
+                return null;
+            }
+
+            // --- Metin Analizi ---
+            function textAnalysis(text) {
+                const lower = text.toLowerCase();
+                let m = lower.match(/^metindeki\s*kelime\s*sayısı\s*:\s*(.+)$/i);
+                if (m) {
+                    const content = m[1].trim();
+                    const words = content.split(/\s+/).filter(w => w.length > 0);
+                    return `📊 Kelime sayısı: ${words.length}\nKarakter sayısı: ${content.length}`;
+                }
+                m = lower.match(/^metni\s*özetle\s*:\s*(.+)$/i);
+                if (m) {
+                    const content = m[1].trim();
+                    const sentences = content.split('.').filter(s => s.trim().length > 0);
+                    if (sentences.length <= 3) return `📝 Özet: ${content}`;
+                    return `📝 Özet: ${sentences.slice(0,3).join('. ')}.`;
+                }
+                m = lower.match(/^düzelt\s*:\s*(.+)$/i);
+                if (m) {
+                    const content = m[1].trim();
+                    // Basit düzeltmeler
+                    const corrections = {
+                        'merhaba': 'merhaba',
+                        'nasılsın': 'nasılsın',
+                        'teşekkürler': 'teşekkürler',
+                        'güzel': 'güzel',
+                        'bende': 'bende',
+                        'sende': 'sende'
+                    };
+                    let fixed = content;
+                    for (const [wrong, correct] of Object.entries(corrections)) {
+                        fixed = fixed.replace(new RegExp(wrong, 'gi'), correct);
+                    }
+                    if (fixed === content) return `✅ Metin düzeltmeye gerek yok: ${content}`;
+                    return `✅ Düzeltilmiş metin: ${fixed}`;
+                }
+                return null;
+            }
+
+            // --- Rastgele İçerik ---
+            // Artık mümkün olduğunda gerçek, ücretsiz ve anahtarsız API'lerden veri
+            // çekiyor (İngilizce gelen sonuçlar Türkçe'ye çevrilir); API'ye ulaşılamazsa
+            // eski sabit listelere geri düşer, böylece hiçbir zaman cevapsız kalınmaz.
+            async function randomContent(text) {
+                const lower = text.toLowerCase();
+                const jokes = [
+                    "🤣 Neden bilgisayarlar üşümez? Çünkü Windows'ları var!",
+                    "😄 Neden programcılar karanlıktan korkar? Çünkü bug'larla dolu!",
+                    "😂 Bir yazılımcıya ne sormuşlar? - 'Ne iş yapıyorsun?' - 'Bilmiyorum, kod çalışmıyor!'",
+                    "😅 Bug'ları bulmak için ne yapmalı? - 'Kodu çalıştır, eğer çalışmıyorsa bug vardır!'",
+                    "🤪 Neden Python programcıları yılanlardan korkar? - 'Çünkü onları import edemezler!'"
+                ];
+                const facts = [
+                    "🐧 Penguenlerin dili yoktur.",
+                    "🌍 Dünya'nın en büyük okyanusu Pasifik Okyanusu'dur.",
+                    "🧠 İnsan beyni yaklaşık 100 milyar nöron içerir.",
+                    "🌿 Bambu günde 91 cm kadar büyüyebilir.",
+                    "🐋 Mavi balina dünyanın en büyük hayvanıdır.",
+                    "☕ Kahve dünyada en çok tüketilen içeceklerden biridir."
+                ];
+                const colors = ["🔴 Kırmızı", "🟠 Turuncu", "🟡 Sarı", "🟢 Yeşil", "🔵 Mavi", "🟣 Mor", "⚫ Siyah", "⚪ Beyaz"];
+
+                if (lower.includes('rastgele şaka') || lower.includes('şaka yap')) {
+                    try {
+                        const res = await fetch('https://official-joke-api.appspot.com/random_joke');
+                        const data = await res.json();
+                        if (data && data.setup && data.punchline) {
+                            const translated = await translateToTurkish(`${data.setup} ${data.punchline}`);
+                            return `🤣 ${translated}`;
+                        }
+                    } catch {}
+                    return jokes[Math.floor(Math.random() * jokes.length)];
+                }
+                if (lower.includes('rastgele bilgi')) {
+                    try {
+                        const res = await fetch('https://uselessfacts.jsph.pl/api/v2/facts/random?language=en');
+                        const data = await res.json();
+                        if (data && data.text) {
+                            const translated = await translateToTurkish(data.text);
+                            return `🧠 ${translated}`;
+                        }
+                    } catch {}
+                    return facts[Math.floor(Math.random() * facts.length)];
+                }
+                if (lower.includes('rastgele tavsiye') || lower.includes('tavsiye ver')) {
+                    try {
+                        const res = await fetch('https://api.adviceslip.com/advice');
+                        const data = await res.json();
+                        if (data && data.slip && data.slip.advice) {
+                            const translated = await translateToTurkish(data.slip.advice);
+                            return `💡 ${translated}`;
+                        }
+                    } catch {}
+                    return "💡 Küçük adımlar büyük değişimlere yol açar.";
+                }
+                if (lower.includes('ilham verici söz') || lower.includes('günün sözü')) {
+                    try {
+                        const res = await fetch('https://zenquotes.io/api/random');
+                        const data = await res.json();
+                        if (Array.isArray(data) && data[0] && data[0].q) {
+                            const translated = await translateToTurkish(data[0].q);
+                            return `✨ "${translated}" — ${data[0].a || 'Bilinmiyor'}`;
+                        }
+                    } catch {}
+                    return "✨ Başarı, her gün küçük çabaların toplamıdır.";
+                }
+                if (lower.includes('kedi bilgisi') || lower.includes('kedi faktı')) {
+                    try {
+                        const res = await fetch('https://catfact.ninja/fact');
+                        const data = await res.json();
+                        if (data && data.fact) {
+                            const translated = await translateToTurkish(data.fact);
+                            return `🐱 ${translated}`;
+                        }
+                    } catch {}
+                    return "🐱 Kediler günde ortalama 13-16 saat uyur.";
+                }
+                if (lower.includes('ne yapsam') || lower.includes('sıkıldım') || lower.includes('aktivite öner')) {
+                    try {
+                        const res = await fetch('https://bored-api.appbrewery.com/random');
+                        const data = await res.json();
+                        if (data && data.activity) {
+                            const translated = await translateToTurkish(data.activity);
+                            return `🎯 Öneri: ${translated}`;
+                        }
+                    } catch {}
+                    return "🎯 Öneri: Kısa bir yürüyüşe çıkıp temiz hava alabilirsin.";
+                }
+                if (lower.includes('quiz sorusu') || lower.includes('bilgi yarışması')) {
+                    try {
+                        const res = await fetch('https://opentdb.com/api.php?amount=1&type=multiple');
+                        const data = await res.json();
+                        const q = data && data.results && data.results[0];
+                        if (q) {
+                            const decode = (s) => s.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&');
+                            const question = await translateToTurkish(decode(q.question));
+                            const answer = await translateToTurkish(decode(q.correct_answer));
+                            return `❓ Quiz: ${question}\n✅ Cevap: ${answer}`;
+                        }
+                    } catch {}
+                    return "❓ Quiz sorusu şu anda alınamadı, tekrar dener misin?";
+                }
+                if (lower.includes('rastgele renk')) return `🎨 Rastgele renk: ${colors[Math.floor(Math.random() * colors.length)]}`;
+                const rangeMatch = lower.match(/rastgele sayı\s*(\d+)\s*[-–]\s*(\d+)/i);
+                if (rangeMatch) {
+                    const min = parseInt(rangeMatch[1]);
+                    const max = parseInt(rangeMatch[2]);
+                    if (!isNaN(min) && !isNaN(max) && min <= max) {
+                        return `🎲 Rastgele sayı: ${Math.floor(Math.random() * (max - min + 1)) + min}`;
+                    }
+                }
+                if (lower.includes('rastgele sayı')) return `🎲 Rastgele sayı: ${Math.floor(Math.random() * 100) + 1}`;
+                return null;
+            }
+
+            // --- Süreç Yönetimi (web'de simüle) ---
+            function processManagement(text) {
+                const lower = text.toLowerCase();
+                if (lower.includes('çalışan uygulamaları göster') || lower.includes('çalışan uygulamalar')) {
+                    return "🔄 Çalışan Uygulamalar (web'de gösterilemez, simüle):\n• Tarayıcı (bu sayfa)\n• Sistem işlemleri (gizli)";
+                }
+                if (lower.includes('görev yöneticisini aç')) {
+                    return "❌ Görev Yöneticisi web ortamında açılamaz.";
+                }
+                if (lower.includes('cpu kullanımını göster')) {
+                    return `💻 CPU Kullanımı: %${Math.round(Math.random() * 60 + 20)} (simüle)`;
+                }
+                const killMatch = lower.match(/^(.+?)\s*kapat$/i);
+                if (killMatch) {
+                    return `✅ ${killMatch[1]} (simüle) kapatıldı. (Web'de gerçek işlem yapılamaz)`;
+                }
+                return null;
+            }
+
+            // --- Sistem Bilgisi ---
+            function getSystemInfo() {
+                const ua = navigator.userAgent;
+                const platform = navigator.platform;
+                const os = navigator.oscpu || platform || 'Bilinmiyor';
+                const cpu = navigator.hardwareConcurrency ? `${navigator.hardwareConcurrency} çekirdek` : 'Bilinmiyor';
+                const ram = navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'Bilinmiyor';
+                return { os, cpu, ram };
+            }
+
+            // --- Notlar ---
+            function addNote(text) {
+                const note = { text, date: new Date().toLocaleString(), id: Date.now() };
+                notes.push(note);
+                saveData('notes', notes);
+                return `✅ Not eklendi: ${text}`;
+            }
+            function showNotes() {
+                if (!notes.length) return "📝 Henüz notunuz yok.";
+                let result = "📝 Notlarınız:\n\n";
+                notes.slice(-10).forEach((n, i) => {
+                    result += `${i+1}. [${n.date}] ${n.text}\n`;
+                });
+                return result;
+            }
+
+            // --- Hatırlatıcılar ---
+            function addReminder(text) {
+                const lower = text.toLowerCase();
+                const match = lower.match(/(?:yarın|bugün)\s*saat\s*(\d+):(\d+)/);
+                if (!match) return "❌ Format: 'yarın saat 14:00'te [not]' veya 'bugün saat 15:30'da [not]'";
+                const hour = parseInt(match[1]);
+                const minute = parseInt(match[2]);
+                const note = text.replace(match[0], '').trim();
+                const now = new Date();
+                let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
+                if (lower.includes('yarın')) target.setDate(target.getDate() + 1);
+                if (target < now) target.setDate(target.getDate() + 1);
+                const reminder = {
+                    text: note || 'Hatırlatıcı',
+                    time: target.toISOString(),
+                    done: false,
+                    created: now.toISOString()
+                };
+                reminders.push(reminder);
+                saveData('reminders', reminders);
+                return `✅ Hatırlatıcı eklendi: ${reminder.text} (${target.toLocaleString()})`;
+            }
+            function showReminders() {
+                const active = reminders.filter(r => !r.done);
+                if (!active.length) return "✅ Tüm hatırlatıcılar tamamlandı.";
+                let result = "⏰ Hatırlatıcılar:\n\n";
+                active.forEach((r, i) => {
+                    const d = new Date(r.time);
+                    result += `${i+1}. ${r.text} (${d.toLocaleString()})\n`;
+                });
+                return result;
+            }
+
+            // Hatırlatıcı kontrolü (periyodik)
+            function startReminderChecker() {
+                if (reminderInterval) clearInterval(reminderInterval);
+                reminderInterval = setInterval(() => {
+                    const now = new Date();
+                    reminders.forEach(r => {
+                        if (r.done) return;
+                        const d = new Date(r.time);
+                        if (now >= d) {
+                            r.done = true;
+                            saveData('reminders', reminders);
+                            addMessage('BRQT', `⏰ HATIRLATICI: ${r.text}`);
+                        }
+                    });
+                }, 30000);
+            }
+
+            // --- Alarmlar ---
+            function addAlarm(text) {
+                const lower = text.toLowerCase();
+                const match = lower.match(/alarm\s*kur\s*(\d+):(\d+)/);
+                if (!match) return "❌ Format: 'alarm kur 07:00'de' veya 'alarm kur 15:30'da'";
+                const hour = parseInt(match[1]);
+                const minute = parseInt(match[2]);
+                const note = text.replace(match[0], '').trim() || 'Alarm';
+                const now = new Date();
+                let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
+                if (target < now) target.setDate(target.getDate() + 1);
+                const alarm = {
+                    text: note,
+                    time: target.toISOString(),
+                    done: false,
+                    created: now.toISOString()
+                };
+                alarms.push(alarm);
+                saveData('alarms', alarms);
+                return `✅ Alarm kuruldu: ${alarm.text} (${target.toLocaleString()})`;
+            }
+            function showAlarms() {
+                const active = alarms.filter(a => !a.done);
+                if (!active.length) return "✅ Tüm alarmlar tamamlandı.";
+                let result = "🔔 Alarmlar:\n\n";
+                active.forEach((a, i) => {
+                    const d = new Date(a.time);
+                    result += `${i+1}. ${a.text} (${d.toLocaleString()})\n`;
+                });
+                return result;
+            }
+
+            // Alarm kontrolü (hatırlatıcı ile aynı)
+            function startAlarmChecker() {
+                // aynı interval'i kullanabiliriz
+                setInterval(() => {
+                    const now = new Date();
+                    alarms.forEach(a => {
+                        if (a.done) return;
+                        const d = new Date(a.time);
+                        if (now >= d) {
+                            a.done = true;
+                            saveData('alarms', alarms);
+                            addMessage('BRQT', `🔔 ALARM! ${a.text}`);
+                        }
+                    });
+                }, 30000);
+            }
+
+            // --- Kısayollar (web'de simüle) ---
+            function addShortcut(path, name) {
+                shortcuts[name] = path;
+                saveData('shortcuts', shortcuts);
+                return `✅ Kısayol oluşturuldu: ${name} -> ${path}`;
+            }
+            function showShortcuts() {
+                const keys = Object.keys(shortcuts);
+                if (!keys.length) return "📌 Kayıtlı kısayol yok.";
+                let result = "📌 Kısayollarınız:\n\n";
+                keys.forEach(k => result += `• ${k} -> ${shortcuts[k]}\n`);
+                return result;
+            }
+            function openShortcut(name) {
+                if (shortcuts[name]) {
+                    // Web'de dosya açılamaz, sadece bilgi ver
+                    return `✅ ${name} (${shortcuts[name]}) açılıyor... (web'de simüle)`;
+                }
+                return `❌ '${name}' kısayolu bulunamadı.`;
+            }
+
+            // --- Şifre Yöneticisi ---
+            function generatePassword(length) {
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+[]{}|;:,.<>?';
+                let pwd = '';
+                for (let i = 0; i < length; i++) {
+                    pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                return pwd;
+            }
+            function savePassword(service, username, password) {
+                if (passwords[service]) return `❌ '${service}' zaten mevcut.`;
+                // basit base64 benzeri (sadece görünüm için)
+                const encoded = btoa(password);
+                passwords[service] = { username, password: encoded, created: new Date().toLocaleString() };
+                saveData('passwords', passwords);
+                return `✅ Şifre kaydedildi: ${service}`;
+            }
+            function getPassword(service) {
+                if (passwords[service]) {
+                    const decoded = atob(passwords[service].password);
+                    return `🔑 ${service}:\nKullanıcı: ${passwords[service].username}\nŞifre: ${decoded}`;
+                }
+                return `❌ '${service}' bulunamadı.`;
+            }
+            function showPasswords() {
+                const keys = Object.keys(passwords);
+                if (!keys.length) return "🔐 Kayıtlı şifre yok.";
+                let result = "🔐 Kayıtlı Servisler:\n\n";
+                keys.forEach(k => result += `• ${k}\n`);
+                return result;
+            }
+
+            // --- Pano Yönetimi ---
+            async function copyToClipboard(text) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return `✅ Panoya kopyalandı: ${text.substring(0,50)}${text.length>50?'...':''}`;
+                } catch {
+                    return "❌ Panoya kopyalanamadı.";
+                }
+            }
+            async function readClipboard() {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    return text ? `📋 Pano içeriği:\n${text}` : "📋 Pano boş.";
+                } catch {
+                    return "❌ Pano okunamadı.";
+                }
+            }
+            async function clearClipboard() {
+                try {
+                    await navigator.clipboard.writeText('');
+                    return "✅ Pano temizlendi.";
+                } catch {
+                    return "❌ Pano temizlenemedi.";
+                }
+            }
+
+            // --- İnternet Hız Testi (simüle) ---
+            function speedTest() {
+                const download = (Math.random() * 80 + 20).toFixed(2);
+                const upload = (Math.random() * 40 + 10).toFixed(2);
+                const ping = (Math.random() * 50 + 10).toFixed(0);
+                return `📊 İnternet Hız Testi (simüle):\n\n📥 İndirme: ${download} Mbps\n📤 Yükleme: ${upload} Mbps\n📡 Ping: ${ping} ms`;
+            }
+
+            // --- Sistem Kontrolü (web'de uyarı) ---
+            function shutdownSystem() {
+                if (confirm('Bilgisayarı kapatmak istediğinize emin misiniz?')) {
+                    return "🔄 Bilgisayar kapatılıyor... (Bu işlem web'de yapılamaz, sadece simüle edildi.)";
+                }
+                return "❌ Kapatma iptal edildi.";
+            }
+            function restartSystem() {
+                if (confirm('Bilgisayarı yeniden başlatmak istediğinize emin misiniz?')) {
+                    return "🔄 Bilgisayar yeniden başlatılıyor... (Simüle)";
+                }
+                return "❌ Yeniden başlatma iptal edildi.";
+            }
+            function sleepSystem() {
+                if (confirm('Bilgisayarı uyku moduna geçirmek istediğinize emin misiniz?')) {
+                    return "💤 Uyku moduna geçiliyor... (Simüle)";
+                }
+                return "❌ Uyku modu iptal edildi.";
+            }
+            function takeScreenshot() {
+                return "📸 Ekran görüntüsü alınamıyor (web'de desteklenmiyor).";
+            }
+
+            // --- Sohbet cevabı (basit) ---
+            async function chatReply(text, english) {
+                const lower = text.toLowerCase();
+                if (english) {
+                    if (['hello',' hi','hey'].some(w => lower.includes(w))) return "Hello! I am BRQT, your local assistant. How can I help you today?";
+                    if (lower.includes('how are you')) return "I'm doing well and ready to help!";
+                    if (lower.includes('time')) return `It is currently ${new Date().toLocaleTimeString()}.`;
+                    if (lower.includes('date')) return `Today's date is ${new Date().toLocaleDateString()}.`;
+                    if (lower.includes('thank')) return "You're welcome! I'm happy to help.";
+                    if (lower.includes('goodbye') || lower.includes('bye')) return "Goodbye! Feel free to come back anytime.";
+                    if (lower.includes('what can you do')) return "I can search the web, find files and apps, manage passwords, convert units, translate text, show system info, and more! Type 'help' for commands.";
+                    // Diğer her şey için doğrudan Google'a bakıp gerçek sonuçlarla cevap ver.
+                    return await googleAnswer(text, english);
+                }
+                // Türkçe
+                if (['merhaba','selam','hey'].some(w => lower.includes(w))) return "Merhaba! Ben BRQT, yerel masaüstü asistanınız. Size nasıl yardımcı olabilirim?";
+                if (lower.includes('nasılsın')) return "İyiyim, teşekkür ederim. Yardım etmeye hazırım.";
+                if (lower.includes('saat')) return `Şu an saat ${new Date().toLocaleTimeString()}.`;
+                if (lower.includes('tarih')) return `Bugünün tarihi ${new Date().toLocaleDateString()}.`;
+                if (lower.includes('adın ne') || lower.includes('ismin ne')) return "Benim adım BRQT - Brain Response Quality Technology.";
+                if (lower.includes('kim yaptı') || lower.includes('yaratıcı')) return "Beni Burak ve Emre adlı iki genç girişimci yaptı. Instagram: Burak->@burak_msz , Emre->@emr_e9960 😊";
+                if (lower.includes('teşekkür')) return "Rica ederim! Yardımcı olabildiğime sevindim.";
+                if (lower.includes('güle güle') || lower.includes('bay bay')) return "Güle güle! İstediğin zaman tekrar uğra.";
+                if (lower.includes('ne yapabilirsin')) return "Web'de arama yapabilirim, dosya ve uygulama bulabilirim, şifre yönetebilirim, birim dönüştürebilirim, çeviri yapabilirim, sistem bilgisi verebilirim ve daha fazlası! 'yardım' yazarak tüm komutları görebilirsin.";
+                // Diğer her şey için doğrudan Google'a bakıp gerçek sonuçlarla cevap ver.
+                return await googleAnswer(text, english);
+            }
+
+            // ============================================================
+            //  ANA KOMUT İŞLEYİCİ (handle)
+            // ============================================================
+            async function handleCommand(text) {
+                const trimmed = text.trim();
+                if (!trimmed) return;
+
+                const lower = trimmed.toLowerCase();
+                const english = isEnglish(trimmed);
+
+                // --- Sesli Yanıt ---
+                if (lower === 'sesli yanıtı aç' || lower === 'sesli yanit ac' || lower === 'voice on') {
+                    voiceReplyEnabled = true;
+                    updateVoiceButtons();
+                    saveAllData();
+                    addMessage('BRQT', '🔊 Sesli yanıt açıldı. Artık cevaplarımı sesli okuyacağım.');
+                    return;
+                }
+                if (lower === 'sesli yanıtı kapat' || lower === 'sesli yanit kapat' || lower === 'voice off') {
+                    voiceReplyEnabled = false;
+                    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+                    updateVoiceButtons();
+                    saveAllData();
+                    addMessage('BRQT', '🔇 Sesli yanıt kapatıldı.');
+                    return;
+                }
+
+                // --- Sohbeti Dışa Aktar ---
+                if (lower === 'sohbeti indir' || lower === 'sohbeti dışa aktar' || lower === 'geçmişi indir' || lower === 'export chat') {
+                    exportChat();
+                    return;
+                }
+
+                // --- Web Arama ---
+                let m = trimmed.match(/^(?:google'da ara|google da ara|search google|google search)\s+(.+)/i);
+                if (m) { searchWeb(m[1].trim(), 'google'); return; }
+                m = trimmed.match(/^(?:youtube'da|youtube da|watch on youtube)\s+(.+)/i);
+                if (m) { searchWeb(m[1].trim(), 'youtube'); return; }
+                m = trimmed.match(/^(?:wikipedia'da|wikipedia da|search wikipedia)\s+(.+)/i);
+                if (m) { searchWeb(m[1].trim(), 'wikipedia'); return; }
+                m = trimmed.match(/^(?:web'de ara|web de ara|search web)\s+(.+)/i);
+                if (m) { searchWeb(m[1].trim(), 'duckduckgo'); return; }
+
+                // --- Hava Durumu (gerçek, ücretsiz Open-Meteo API'si) ---
+                m = trimmed.match(/^(?:hava durumu|hava nasıl)\s+(.+)/i) || trimmed.match(/^(.+?)\s*(?:hava durumu|hava nasıl|weather)\??$/i) || trimmed.match(/^weather\s+(?:in|for)?\s*(.+)/i);
+                if (m && m[1] && m[1].trim().length > 1) {
+                    // Türkçe hal eklerini temizle: "İstanbul'da" -> "İstanbul"
+                    const cityClean = m[1].trim().replace(/'?(da|de|ta|te|dan|den|tan|ten)$/i, '');
+                    showTyping();
+                    const weatherReply = await weatherAnswer(cityClean || m[1].trim(), english);
+                    hideTyping();
+                    addMessage('BRQT', weatherReply);
+                    return;
+                }
+
+                // --- Kripto Para Fiyatı (gerçek, ücretsiz CoinGecko API'si) ---
+                m = trimmed.match(/^(.+?)\s*(?:fiyatı|fiyatı nedir|kaç dolar|kaç tl)\??$/i);
+                if (m && m[1] && CRYPTO_IDS[m[1].trim().toLowerCase()]) {
+                    showTyping();
+                    const cryptoReply = await cryptoPrice(m[1].trim(), english);
+                    hideTyping();
+                    addMessage('BRQT', cryptoReply);
+                    return;
+                }
+
+                // --- Resmi Tatiller (gerçek, ücretsiz Nager.Date API'si) ---
+                if (lower.includes('resmi tatil') || lower.includes('resmi tatiller') || lower.includes('public holiday')) {
+                    showTyping();
+                    const holidaysReply = await publicHolidays(english);
+                    hideTyping();
+                    addMessage('BRQT', holidaysReply);
+                    return;
+                }
+
+                // --- Ülke Bilgisi (gerçek, ücretsiz REST Countries API'si) ---
+                m = trimmed.match(/^(.+?)\s*(?:hakkında bilgi|ülke bilgisi|nüfusu kaç|başkenti neresi)\??$/i) || trimmed.match(/^(?:ülke bilgisi|country info)\s+(.+)/i);
+                if (m && m[1] && m[1].trim().length > 1) {
+                    showTyping();
+                    const countryReply = await countryInfo(m[1].trim(), english);
+                    hideTyping();
+                    addMessage('BRQT', countryReply);
+                    return;
+                }
+
+                // --- IP / Konum Bilgisi (gerçek, ücretsiz ipapi.co) ---
+                if (lower.includes('ip adresim') || lower.includes('my ip') || lower.includes('konumum ne')) {
+                    showTyping();
+                    const ipReply = await ipLocationInfo(english);
+                    hideTyping();
+                    addMessage('BRQT', ipReply);
+                    return;
+                }
+
+                // --- İsim Analizi (gerçek, ücretsiz Agify/Genderize/Nationalize API'leri) ---
+                m = trimmed.match(/^(?:isim analizi|name analysis)\s+(.+)/i);
+                if (m && m[1]) {
+                    showTyping();
+                    const nameReply = await nameAnalysis(m[1].trim(), english);
+                    hideTyping();
+                    addMessage('BRQT', nameReply);
+                    return;
+                }
+
+                // --- İngilizce Sözlük (gerçek, ücretsiz dictionaryapi.dev) ---
+                m = trimmed.match(/^(?:sözlük|dictionary)\s+(.+)/i);
+                if (m && m[1]) {
+                    showTyping();
+                    const dictReply = await dictionaryDefine(m[1].trim(), english);
+                    hideTyping();
+                    addMessage('BRQT', dictReply);
+                    return;
+                }
+
+                // --- Hatırlatıcı ---
+                if (lower.startsWith('hatırlat') || lower.startsWith('hatırlatıcı ekle') || lower.startsWith('remind')) {
+                    const reminderText = trimmed.replace(/^(hatırlat|hatırlatıcı ekle|remind)\s*/i, '');
+                    if (reminderText) {
+                        addMessage('BRQT', addReminder(reminderText));
+                        return;
+                    }
+                    addMessage('BRQT', 'Lütfen hatırlatıcı metnini girin. Örnek: "yarın saat 14:00\'te toplantı var"');
+                    return;
+                }
+                if (lower === 'hatırlatıcıları göster' || lower === 'hatırlatıcılar' || lower === 'show reminders') {
+                    addMessage('BRQT', showReminders());
+                    return;
+                }
+                if (lower === 'bugün ne var' || lower === "what's today") {
+                    const now = new Date();
+                    let result = `📅 Bugün ${now.toLocaleDateString()}, saat ${now.toLocaleTimeString()}\n\n${showReminders()}`;
+                    addMessage('BRQT', result);
+                    return;
+                }
+
+                // --- Alarm ---
+                if (lower.startsWith('alarm kur')) {
+                    addMessage('BRQT', addAlarm(trimmed));
+                    return;
+                }
+                if (lower === 'alarmları göster' || lower === 'alarmlar') {
+                    addMessage('BRQT', showAlarms());
+                    return;
+                }
+
+                // --- Notlar ---
+                if (lower.startsWith('not al') || lower.startsWith('not ekle') || lower.startsWith('add note')) {
+                    const noteText = trimmed.replace(/^(not al|not ekle|add note)\s*/i, '');
+                    if (noteText) {
+                        addMessage('BRQT', addNote(noteText));
+                        return;
+                    }
+                    addMessage('BRQT', 'Not metni girin. Örnek: "not al: Alışveriş listesi"');
+                    return;
+                }
+                if (lower === 'notlarımı göster' || lower === 'notlar' || lower === 'show notes') {
+                    addMessage('BRQT', showNotes());
+                    return;
+                }
+
+                // --- Sistem Kontrolü ---
+                if (lower === 'bilgisayarı kapat' || lower === 'shutdown') {
+                    addMessage('BRQT', shutdownSystem());
+                    return;
+                }
+                if (lower === 'yeniden başlat' || lower === 'restart') {
+                    addMessage('BRQT', restartSystem());
+                    return;
+                }
+                if (lower === 'uyku moduna geç' || lower === 'sleep') {
+                    addMessage('BRQT', sleepSystem());
+                    return;
+                }
+                if (lower === 'ekran görüntüsü al' || lower === 'screenshot') {
+                    addMessage('BRQT', takeScreenshot());
+                    return;
+                }
+
+                // --- Kısayol ---
+                if (lower.startsWith('kısayol oluştur') || lower.startsWith('create shortcut')) {
+                    const match = trimmed.match(/^(?:kısayol oluştur|create shortcut)\s+(.+?)\s+(?:adı|name|)(?:\s*:\s*|\s+)(.+)$/i);
+                    if (match) {
+                        addMessage('BRQT', addShortcut(match[1].trim(), match[2].trim()));
+                        return;
+                    }
+                    addMessage('BRQT', "Format: 'kısayol oluştur [uygulama yolu] [kısayol adı]'");
+                    return;
+                }
+                if (lower === 'kısayollarımı göster' || lower === 'kısayollar') {
+                    addMessage('BRQT', showShortcuts());
+                    return;
+                }
+                const shortcutMatch = trimmed.match(/^(?:kısayol|shortcut)\s+(.+?)\s+(?:ile|ile aç|open)/i);
+                if (shortcutMatch) {
+                    addMessage('BRQT', openShortcut(shortcutMatch[1].trim()));
+                    return;
+                }
+
+                // --- Şifre ---
+                if (lower.startsWith('güçlü şifre üret')) {
+                    const lenMatch = trimmed.match(/\d+/);
+                    const len = lenMatch ? parseInt(lenMatch[0]) : 16;
+                    addMessage('BRQT', `🔐 Güçlü Şifre: ${generatePassword(len)}`);
+                    return;
+                }
+                if (lower.startsWith('şifre kaydet')) {
+                    const match = trimmed.match(/şifre\s*kaydet\s+(.+?)\s+(.+?)\s+(.+)/i);
+                    if (match) {
+                        addMessage('BRQT', savePassword(match[1].trim(), match[2].trim(), match[3].trim()));
+                        return;
+                    }
+                    addMessage('BRQT', "Format: 'şifre kaydet [servis] [kullanıcı] [şifre]'");
+                    return;
+                }
+                const pwdGetMatch = trimmed.match(/şifre\s*göster\s+(.+)/i);
+                if (pwdGetMatch) {
+                    addMessage('BRQT', getPassword(pwdGetMatch[1].trim()));
+                    return;
+                }
+                if (lower === 'şifreleri göster' || lower === 'kayıtlı şifreler') {
+                    addMessage('BRQT', showPasswords());
+                    return;
+                }
+
+                // --- Süreç Yönetimi ---
+                const procResult = processManagement(trimmed);
+                if (procResult) { addMessage('BRQT', procResult); return; }
+
+                // --- Birim Dönüştürücü ---
+                const convResult = await convertUnits(trimmed);
+                if (convResult) { addMessage('BRQT', convResult); return; }
+
+                // --- Çeviri ---
+                const transResult = await translateText(trimmed);
+                if (transResult) { addMessage('BRQT', transResult); return; }
+
+                // --- Metin Analizi ---
+                const analysisResult = textAnalysis(trimmed);
+                if (analysisResult) { addMessage('BRQT', analysisResult); return; }
+
+                // --- Rastgele İçerik ---
+                const randomResult = await randomContent(trimmed);
+                if (randomResult) { addMessage('BRQT', randomResult); return; }
+
+                // --- Pano ---
+                if (lower.startsWith('panoya kopyala') || lower.startsWith('copy to clipboard')) {
+                    const textToCopy = trimmed.replace(/^(panoya kopyala|copy to clipboard)\s*/i, '');
+                    if (textToCopy) {
+                        addMessage('BRQT', await copyToClipboard(textToCopy));
+                        return;
+                    }
+                    addMessage('BRQT', 'Kopyalanacak metni girin.');
+                    return;
+                }
+                if (lower === 'panodakini oku' || lower === 'panoyu oku' || lower === 'read clipboard') {
+                    addMessage('BRQT', await readClipboard());
+                    return;
+                }
+                if (lower === 'panoyu temizle' || lower === 'clear clipboard') {
+                    addMessage('BRQT', await clearClipboard());
+                    return;
+                }
+
+                // --- Hız Testi ---
+                if (lower === 'internet hızını test et' || lower === 'hız testi' || lower === 'speed test') {
+                    addMessage('BRQT', speedTest());
+                    return;
+                }
+
+                // --- Dosya Arama ---
+                if (lower.startsWith('dosya ara') || lower.startsWith('find file')) {
+                    const query = trimmed.replace(/^(dosya ara|find file)\s*/i, '');
+                    const results = findFiles(query);
+                    lastFiles = results;
+                    lastKind = 'file';
+                    if (results.length) {
+                        let msg = results.map((f, i) => `${i+1}. ${f.name}`).join('\n');
+                        msg += '\n\nAçmak için "aç [numara]" yaz. (web\'de simüle)';
+                        addMessage('BRQT', msg);
+                    } else {
+                        addMessage('BRQT', 'Dosya bulunamadı.');
+                    }
+                    return;
+                }
+
+                // --- Uygulama Arama ---
+                if (lower.startsWith('uygulama ara') || lower.startsWith('find app')) {
+                    const query = trimmed.replace(/^(uygulama ara|find app)\s*/i, '');
+                    const results = findApps(query);
+                    lastApps = results;
+                    lastKind = 'app';
+                    if (results.length) {
+                        let msg = results.map((a, i) => `${i+1}. ${a.name}`).join('\n');
+                        msg += '\n\nAçmak için "aç [numara]" yaz. (web\'de simüle)';
+                        addMessage('BRQT', msg);
+                    } else {
+                        addMessage('BRQT', 'Uygulama bulunamadı.');
+                    }
+                    return;
+                }
+
+                // --- Açma komutu ---
+                const openMatch = trimmed.match(/^(?:aç|ac|open)\s+(\d+)/i);
+                if (openMatch) {
+                    const idx = parseInt(openMatch[1]) - 1;
+                    let target = null;
+                    if (lastKind === 'file' && idx >= 0 && idx < lastFiles.length) target = lastFiles[idx];
+                    else if (lastKind === 'app' && idx >= 0 && idx < lastApps.length) target = lastApps[idx];
+                    if (target) {
+                        addMessage('BRQT', `✅ ${target.name} açılıyor... (web'de simüle)`);
+                    } else {
+                        addMessage('BRQT', 'Bu numarada bir sonuç yok.');
+                    }
+                    return;
+                }
+
+                // --- Sistem Bilgisi ---
+                if (['sistem','özellik','system','spec'].some(k => lower.includes(k))) {
+                    const info = getSystemInfo();
+                    const msg = `🖥️ Sistem:\n• İşletim Sistemi: ${info.os}\n• İşlemci: ${info.cpu}\n• RAM: ${info.ram}`;
+                    addMessage('BRQT', msg);
+                    return;
+                }
+                if (lower === 'ram' || lower === 'bellek' || lower === 'memory') {
+                    const info = getSystemInfo();
+                    addMessage('BRQT', `RAM: ${info.ram}`);
+                    return;
+                }
+                if (lower === 'depolama' || lower === 'disk' || lower === 'storage') {
+                    addMessage('BRQT', 'Depolama bilgisi web\'de alınamıyor.');
+                    return;
+                }
+                if (lower === 'işlemci' || lower === 'cpu' || lower === 'processor') {
+                    const info = getSystemInfo();
+                    addMessage('BRQT', `İşlemci: ${info.cpu}`);
+                    return;
+                }
+
+                // --- Matematik ---
+                const mathResult = safeMath(trimmed);
+                if (mathResult) { addMessage('BRQT', mathResult); return; }
+
+                // --- Yardım ---
+                if (lower === 'yardım' || lower === 'yardim' || lower === 'help') {
+                    const helpText =
+                        `📌 BRQT Komutları:
+
+        🔍 Web Arama:
+        • 'Google'da ara [sorgu]'
+        • 'YouTube'da [video] izle'
+        • 'Wikipedia'da [konu] ara'
+
+        ⏰ Hatırlatıcı & Alarm:
+        • 'yarın saat 14:00'te toplantı var'
+        • 'alarm kur 07:00'de'
+        • 'hatırlatıcıları göster'
+
+        📝 Notlar:
+        • 'not al: Alışveriş listesi'
+        • 'notlarımı göster'
+
+        💻 Sistem Kontrolü (web'de simüle):
+        • 'bilgisayarı kapat' (onaylı)
+        • 'yeniden başlat' (onaylı)
+        • 'uyku moduna geç'
+        • 'ekran görüntüsü al'
+
+        📌 Kısayollar:
+        • 'kısayol oluştur [uygulama yolu] [ad]'
+        • 'kısayollarımı göster'
+
+        🔐 Şifre Yöneticisi:
+        • 'güçlü şifre üret'
+        • 'şifre kaydet [servis] [kullanıcı] [şifre]'
+        • 'şifre göster [servis]'
+
+        🔄 Süreç Yönetimi (web'de simüle):
+        • 'çalışan uygulamaları göster'
+        • '[uygulama] kapat'
+        • 'görev yöneticisini aç'
+        • 'cpu kullanımını göster'
+
+        📊 Birim Dönüştürücü:
+        • '5 kg kaç pound?', '25°C kaç °F?'
+        • '10 mil kaç km?', '100 USD kaç TL?'
+
+        🔤 Çeviri:
+        • '[kelime] ne demek?'
+        • 'ingilizce'de [kelime] ne?'
+        • 'Türkçe'ye çevir: [metin]'
+
+        📝 Metin Analizi:
+        • 'metindeki kelime sayısı: [metin]'
+        • 'metni özetle: [metin]'
+        • 'düzelt: [metin]'
+
+        🌦️ Hava Durumu (gerçek, canlı veri):
+        • '[şehir] hava durumu', 'hava durumu [şehir]'
+        • '[şehir] hava nasıl'
+
+        💰 Kripto Para Fiyatı (gerçek, canlı veri):
+        • 'bitcoin fiyatı', 'ethereum kaç dolar'
+
+        📅 Resmi Tatiller (gerçek veri):
+        • 'resmi tatiller'
+
+        🌍 Ülke Bilgisi (gerçek veri):
+        • '[ülke] hakkında bilgi', '[ülke] nüfusu kaç'
+
+        🌐 IP / Konum Bilgisi (gerçek veri):
+        • 'ip adresim', 'konumum ne'
+
+        🔤 İsim Analizi (istatistiksel tahmin, eğlence amaçlı):
+        • 'isim analizi [isim]'
+
+        📖 İngilizce Sözlük (gerçek tanım + Türkçe çeviri):
+        • 'sözlük [kelime]'
+
+        🎲 Rastgele İçerik (gerçek API + Türkçe çeviri):
+        • 'rastgele şaka', 'rastgele bilgi'
+        • 'rastgele tavsiye', 'günün sözü'
+        • 'kedi bilgisi', 'ne yapsam', 'quiz sorusu'
+        • 'rastgele sayı 1-100', 'rastgele renk'
+
+        📋 Pano Yönetimi:
+        • 'panoya kopyala: metin'
+        • 'panodakini oku'
+        • 'panoyu temizle'
+
+        📊 İnternet Hız Testi (simüle):
+        • 'internet hızını test et'
+
+        💻 Sistem Bilgisi:
+        • 'sistem bilgisi', 'ram', 'depolama', 'işlemci'
+
+        🧮 Matematik:
+        • '5+3', '10*2', '(8+4)/2'
+
+        🔍 Dosya/Uygulama Arama (simüle):
+        • 'dosya ara [kelime]'
+        • 'uygulama ara [kelime]'
+
+        🎤 Sesli Komut & Yanıt:
+        • Mikrofon butonuna 🎤 tıkla, konuş, otomatik gönderilsin
+        • 'sesli yanıtı aç' / 'sesli yanıtı kapat'
+
+        ⬇ Sohbeti Dışa Aktar:
+        • 'sohbeti indir' veya ⬇ butonuna tıkla`;
+                    addMessage('BRQT', helpText);
+                    return;
+                }
+
+                // --- Sohbet (genel) ---
+                showTyping();
+                const reply = await chatReply(trimmed, english);
+                hideTyping();
+                addMessage('BRQT', reply);
+            }
+
+            // ============================================================
+            //  OLAY BAĞLAMALARI
+            // ============================================================
+
+            // Gönder
+            async function sendMessage() {
+                const text = inputEl.value;
+                if (!text.trim()) return;
+                inputEl.value = '';
+                addMessage('Sen', text);
+                showTyping();
+                const delay = Math.min(1400, 350 + text.length * 12);
+                await new Promise(res => setTimeout(res, delay));
+                hideTyping();
+                await handleCommand(text);
+            }
+
+            inputEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+            sendBtn.addEventListener('click', sendMessage);
+
+            // Ayarlar modal
+            settingsBtn.addEventListener('click', () => {
+                modal.classList.add('active');
+                glowPicker.value = glowColor;
+                glowHex.textContent = glowColor;
+                updateLangButtons();
+            });
+            closeModalBtn.addEventListener('click', () => modal.classList.remove('active'));
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.classList.remove('active');
+            });
+
+            // Renk seçici
+            glowPicker.addEventListener('input', (e) => {
+                const color = e.target.value;
+                glowColor = color;
+                applyGlow(color);
+                saveAllData();
+            });
+
+            // Dil butonları
+            langTr.addEventListener('click', () => {
+                searchLang = 'tr';
+                updateLangButtons();
+                saveAllData();
+            });
+            langEn.addEventListener('click', () => {
+                searchLang = 'en';
+                updateLangButtons();
+                saveAllData();
+            });
+
+            // Mikrofon (sesli komut)
+            micBtn.addEventListener('click', toggleListening);
+
+            // Sohbeti dışa aktar
+            exportBtn.addEventListener('click', exportChat);
+
+            // Sesli yanıt aç/kapat
+            voiceOnBtn.addEventListener('click', () => {
+                voiceReplyEnabled = true;
+                updateVoiceButtons();
+                saveAllData();
+            });
+            voiceOffBtn.addEventListener('click', () => {
+                voiceReplyEnabled = false;
+                if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+                updateVoiceButtons();
+                saveAllData();
+            });
+
+            // Pencere kontrolleri
+            closeWinBtn.addEventListener('click', () => {
+                if (confirm('BRQT\'yi kapatmak istediğinize emin misiniz?')) {
+                    window.close();
+                }
+            });
+            minimizeBtn.addEventListener('click', () => {
+                // Tarayıcı penceresini küçültmek mümkün değil, sadece uyarı
+                alert('Pencere küçültme işlemi tarayıcı tarafından desteklenmiyor.');
+            });
+            maximizeBtn.addEventListener('click', () => {
+                if (!isMaximized) {
+                    appWindow.style.width = '100vw';
+                    appWindow.style.height = '100vh';
+                    appWindow.style.borderRadius = '0';
+                    isMaximized = true;
+                } else {
+                    appWindow.style.width = '780px';
+                    appWindow.style.height = '650px';
+                    appWindow.style.borderRadius = '28px';
+                    isMaximized = false;
+                }
+            });
+
+            // ============================================================
+            //  BAŞLATMA
+            // ============================================================
+
+            loadAllData();
+            applyGlow(glowColor);
+            startReminderChecker();
+            startAlarmChecker();
+            showWelcome();
+
+            // input'a odaklan
+            inputEl.focus();
+
+            // Herhangi bir tıklamada input odaklansın (isteğe bağlı)
+            document.addEventListener('click', () => inputEl.focus());
+
+            console.log('BRQT Web Sürümü başlatıldı. 🚀');
+        })();
+    </script>
+</body>
+</html>
